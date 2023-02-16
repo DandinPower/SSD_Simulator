@@ -1,7 +1,26 @@
-from ftl.buffer import BufferQueue
+from ftl.buffer.write_buffer import WriteBuffer
 
 def test_buffer_1():
-    buffer = BufferQueue()
-    buffer.add_data(1)
-    buffer.add_data(2)
-    assert buffer.get_data() == None
+    buffer = WriteBuffer()
+    buffer.AddLba(1)
+    buffer.AddLba(2)
+    assert buffer.GetPage() == None
+
+def test_buffer_2():
+    buffer = WriteBuffer()
+    buffer.AddLba(1)
+    buffer.AddLba(2)
+    buffer.AddLba(3)
+    buffer.AddLba(4)
+    assert buffer.GetPage() == (1,2,3,4)
+
+def test_buffer_3():
+    buffer = WriteBuffer()
+    buffer.AddLba(1)
+    buffer.AddLba(2)
+    buffer.AddLba(3)
+    buffer.AddLba(4)
+    buffer.AddLba(1)
+    buffer.AddLba(2)
+    assert buffer.GetPage() == (1,2,3,4)
+    assert buffer.GetPage() == None

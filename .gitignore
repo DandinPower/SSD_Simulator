@@ -1,1 +1,3 @@
 __pycache__
+trace/TPCC.trace.csv
+.pytest_cache
