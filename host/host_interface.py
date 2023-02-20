@@ -16,7 +16,8 @@ class HostInterface:
     # environment step
     def Step(self):
         writeRequest = self._hostRequestQueue.GetWriteRequest()
-        self.Fio(writeRequest)
+        totalWriteBytes = self.Fio(writeRequest)
+        return writeRequest, totalWriteBytes
 
     def Fio(self, request):
         writeBytes = self._flashTranslation.Write(request)

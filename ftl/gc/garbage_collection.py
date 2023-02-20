@@ -7,6 +7,7 @@ AUTO_GC_RATIO = float(os.getenv('AUTO_GC_RATIO'))
 
 class GarbageCollection:
     def __init__(self):
+        self._count = 0
         self._nandController = None
 
     def SetNandController(self, nandController):
@@ -15,8 +16,17 @@ class GarbageCollection:
     def SetAddressTranslation(self, addressTranslation):
         self._addressTranslation = addressTranslation
 
+    # use in passive gc, it will only run when free space is less than setting free ratio
+    def AutoCheck(self, ratio):
+        if ratio < (1 - AUTO_GC_RATIO): 
+            return self.Run()
+        else:
+            return 0
+
     # implement gc because of free space is less than setting ratio
     def Run(self):
+        self._count += 1
+        totalWriteBytes = 0
         # find the highest invalid num block to gc
         blockIdx = self._nandController.GetHighestInvalidsBlockIdx()
         reverseMap = self._addressTranslation.GetTempReverseMap()
@@ -27,15 +37,17 @@ class GarbageCollection:
             if page._status == PageStatus.VALID:
                 logicalPage = reverseMap[page._pageAddress]
                 # program all page in to nandcontroller
+                if (page._pageAddress == 114466):
+                    print(logicalPage)
                 logicalPages.append(logicalPage)
         for page in logicalPages:
-            physicalPageAddress = self._nandController.Program()
+            physicalPageAddress, writeBytes = self._nandController.Program()
             # update lba map inside page
-            self._addressTranslation.Update(logicalPage, physicalPageAddress)
+            duplicate = self._addressTranslation.Update(logicalPage, physicalPageAddress)
+            #if (114466 in duplicate):
+            #    print(duplicate)
+            totalWriteBytes += writeBytes
+        self._nandController.RemoveFromFreeBlockIfAlreadyFree(blockIdx)
         self._nandController.AddFreeBlock(blockIdx)
         self._nandController.EraseBlock(blockIdx)
-
-    # use in passive gc, it will only run when free space is less than setting free ratio
-    def AutoCheck(self, ratio):
-        if ratio < (1 - AUTO_GC_RATIO): 
-            self.Run()
+        return totalWriteBytes

@@ -9,6 +9,7 @@ load_dotenv()
 PHYSICAL_PAGE_NUM_IN_BLOCK = int(os.getenv('PHYSICAL_PAGE_NUM_IN_BLOCK'))
 PHYSICAL_BLOCK_NUM = int(os.getenv('PHYSICAL_BLOCK_NUM'))
 PHYSICAL_PAGE_SIZE_RATIO = int(os.getenv('PHYSICAL_PAGE_SIZE_RATIO'))
+LBA_BYTES = int(os.getenv('LBA_BYTES'))
 
 class PageStatus(enum.Enum):
     FREE = 1
@@ -16,7 +17,8 @@ class PageStatus(enum.Enum):
     INVALID = 3
 
 class PhysicalBlock:
-    def __init__(self, blockIdx):
+    def __init__(self, blockIdx, parentObject):
+        self._parentObject = parentObject
         self._blockIdx = blockIdx
         self._pages = [PhysicalPage(self._blockIdx * PHYSICAL_PAGE_NUM_IN_BLOCK + i, self) for i in range(PHYSICAL_PAGE_NUM_IN_BLOCK)]
         self._invalid = 0
@@ -26,7 +28,10 @@ class PhysicalBlock:
         return self._currentPageIndex == PHYSICAL_PAGE_NUM_IN_BLOCK
 
     def Program(self):
-        if self._currentPageIndex == PHYSICAL_PAGE_NUM_IN_BLOCK: raise MemoryError('insufficent space to program')
+        if self._currentPageIndex == PHYSICAL_PAGE_NUM_IN_BLOCK: 
+            print(f'error on : {self._blockIdx}, currentPage: {self._currentPageIndex}')
+            print(f'Free block: {self._parentObject._freeBlockIndexes}')
+            raise MemoryError('insufficent space to program')
         if self._pages[self._currentPageIndex]._status != PageStatus.FREE: raise MemoryError('program on not free page')
         self._pages[self._currentPageIndex]._status = PageStatus.VALID
         self._pages[self._currentPageIndex].AllValid()
@@ -41,6 +46,7 @@ class PhysicalBlock:
         self._invalid = 0
         self._currentPageIndex = 0
         for page in self._pages:
+            
             page.Erase()
 
     def __getitem__(self, index):
@@ -81,25 +87,32 @@ class NandController:
     def __init__(self):
         self._blocks = []
         self._freeBlockIndexes = deque([i for i in range(PHYSICAL_BLOCK_NUM)]) #寫滿pop掉, gc後append
-        self._currentBlockIndex = self._freeBlockIndexes.popleft()
+        self._currentBlockIndex = self._freeBlockIndexes[0]
         self.InitializeBlocks()
 
     def AddFreeBlock(self, blockIdx):
-        self._freeBlockIndexes.appendleft(blockIdx)
+        self._freeBlockIndexes.append(blockIdx)
     
     def EraseBlock(self, blockIdx):
         self._blocks[blockIdx].Erase()
 
+    def RemoveFromFreeBlockIfAlreadyFree(self, blockIdx):
+        if not self._blocks[blockIdx].IsFull():
+            self._freeBlockIndexes.remove(blockIdx)
+
     def InitializeBlocks(self):
-        PrintLog('Build Virtual Die...')
+        PrintLog('Build Virtual Blocks...')
         for i in tqdm(range(PHYSICAL_BLOCK_NUM)):
-            self._blocks.append(PhysicalBlock(i))
+            self._blocks.append(PhysicalBlock(i, self))
         
     def Program(self):
         if self._blocks[self._currentBlockIndex].IsFull(): 
-            self._currentBlockIndex = self._freeBlockIndexes.popleft()
+            self._freeBlockIndexes.popleft()
+            if len(self._freeBlockIndexes) == 0:
+                raise IndexError('no free block')
+            self._currentBlockIndex = self._freeBlockIndexes[0]
         physicalPageAddress = self._blocks[self._currentBlockIndex].Program()
-        return  physicalPageAddress
+        return  physicalPageAddress, PHYSICAL_PAGE_SIZE_RATIO * LBA_BYTES
 
     def GetHighestInvalidsBlockIdx(self):
         tempBlocks = sorted(self._blocks, reverse= True)

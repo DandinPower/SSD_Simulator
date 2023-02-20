@@ -12,7 +12,7 @@ class DataCacheManage:
     def WriteCache(self, request):
         lbaNums = request.bytes // LBA_BYTES
         if request.bytes % LBA_BYTES != 0: lbaNums += 1
-        for i in range(lbaNums): self._writeBuffer.AddLba(request.lba + i)
+        for i in range(lbaNums): self._writeBuffer.AddLba(request.lba // 4096 + i)
             
     def GetCache(self):
         return self._writeBuffer.GetPage()

@@ -13,12 +13,17 @@ class FlashTranslation:
         self._garbageCollection.SetAddressTranslation(self._addressTranslation)
     # return actual write bytes
     def Write(self, request):
+        totalWriteBytes = 0
         self._dataCacheManage.WriteCache(request)
         while True:
             page = self._dataCacheManage.GetCache()
             if not page: break 
-            physicalPageAddress = self._nandController.Program()
-            duplicateAddress = self._addressTranslation.Update(page, physicalPageAddress)
+            physicalPageAddress, writeBytes = self._nandController.Program()
+            if (physicalPageAddress == 0):
+                print(page, physicalPageAddress)
+            duplicateAddress = self._addressTranslation.Update(page, physicalPageAddress) 
             if duplicateAddress: self._nandController.Override(duplicateAddress)
-        self._garbageCollection.AutoCheck(self._nandController.GetFreeSpaceRatio())
-        return 0
+            totalWriteBytes += writeBytes
+        writeBytes = self._garbageCollection.AutoCheck(self._nandController.GetFreeSpaceRatio())
+        totalWriteBytes += writeBytes
+        return totalWriteBytes
