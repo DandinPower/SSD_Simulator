@@ -37,15 +37,12 @@ class GarbageCollection:
             if page._status == PageStatus.VALID:
                 logicalPage = reverseMap[page._pageAddress]
                 # program all page in to nandcontroller
-                if (page._pageAddress == 114466):
-                    print(logicalPage)
                 logicalPages.append(logicalPage)
         for page in logicalPages:
-            physicalPageAddress, writeBytes = self._nandController.Program()
+            programCount = len(page)
+            physicalPageAddress, writeBytes = self._nandController.Program(programCount)
             # update lba map inside page
-            duplicate = self._addressTranslation.Update(logicalPage, physicalPageAddress)
-            #if (114466 in duplicate):
-            #    print(duplicate)
+            duplicate = self._addressTranslation.Update(page, physicalPageAddress)
             totalWriteBytes += writeBytes
         self._nandController.RemoveFromFreeBlockIfAlreadyFree(blockIdx)
         self._nandController.AddFreeBlock(blockIdx)

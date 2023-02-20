@@ -27,14 +27,14 @@ class PhysicalBlock:
     def IsFull(self):
         return self._currentPageIndex == PHYSICAL_PAGE_NUM_IN_BLOCK
 
-    def Program(self):
+    def Program(self, count):
         if self._currentPageIndex == PHYSICAL_PAGE_NUM_IN_BLOCK: 
             print(f'error on : {self._blockIdx}, currentPage: {self._currentPageIndex}')
             print(f'Free block: {self._parentObject._freeBlockIndexes}')
             raise MemoryError('insufficent space to program')
         if self._pages[self._currentPageIndex]._status != PageStatus.FREE: raise MemoryError('program on not free page')
         self._pages[self._currentPageIndex]._status = PageStatus.VALID
-        self._pages[self._currentPageIndex].AllValid()
+        self._pages[self._currentPageIndex].Program(count)
         physicalPageAddress = self._pages[self._currentPageIndex]._pageAddress
         self._currentPageIndex += 1
         return physicalPageAddress
@@ -65,8 +65,8 @@ class PhysicalPage:
         self._status = PageStatus.FREE
         self._validNum = -1
 
-    def AllValid(self):
-        self._validNum = PHYSICAL_PAGE_SIZE_RATIO
+    def Program(self, count):
+        self._validNum = count
 
     def Override(self):
         if self._status == PageStatus.INVALID: raise MemoryError('exceeds limitation')
@@ -84,7 +84,8 @@ class PhysicalPage:
         return f'{self._pageAddress}, {self._validNum}, status: {self._status}'
             
 class NandController:
-    def __init__(self):
+    def __init__(self, parentObject):
+        self._parentObject = parentObject
         self._blocks = []
         self._freeBlockIndexes = deque([i for i in range(PHYSICAL_BLOCK_NUM)]) #寫滿pop掉, gc後append
         self._currentBlockIndex = self._freeBlockIndexes[0]
@@ -97,6 +98,8 @@ class NandController:
         self._blocks[blockIdx].Erase()
 
     def RemoveFromFreeBlockIfAlreadyFree(self, blockIdx):
+        if self._blocks[blockIdx].IsFull() and blockIdx in self._freeBlockIndexes:
+            print(self._freeBlockIndexes)
         if not self._blocks[blockIdx].IsFull():
             self._freeBlockIndexes.remove(blockIdx)
 
@@ -105,14 +108,16 @@ class NandController:
         for i in tqdm(range(PHYSICAL_BLOCK_NUM)):
             self._blocks.append(PhysicalBlock(i, self))
         
-    def Program(self):
+    def Program(self, count):
+        physicalPageAddress = self._blocks[self._currentBlockIndex].Program(count)
         if self._blocks[self._currentBlockIndex].IsFull(): 
-            self._freeBlockIndexes.popleft()
+            self._freeBlockIndexes.remove(self._currentBlockIndex)
             if len(self._freeBlockIndexes) == 0:
+                print(self._blocks)
+                print(self._parentObject._garbageCollection._count)
                 raise IndexError('no free block')
             self._currentBlockIndex = self._freeBlockIndexes[0]
-        physicalPageAddress = self._blocks[self._currentBlockIndex].Program()
-        return  physicalPageAddress, PHYSICAL_PAGE_SIZE_RATIO * LBA_BYTES
+        return physicalPageAddress, PHYSICAL_PAGE_SIZE_RATIO * LBA_BYTES
 
     def GetHighestInvalidsBlockIdx(self):
         tempBlocks = sorted(self._blocks, reverse= True)

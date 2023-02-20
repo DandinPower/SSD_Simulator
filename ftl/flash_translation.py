@@ -2,11 +2,15 @@ from .buffer.data_cache_manage import DataCacheManage
 from .physical.nand_controller import NandController
 from .address.address_translation import AddressTranslation
 from .gc.garbage_collection import GarbageCollection
+from dotenv import load_dotenv
+import os
+load_dotenv()
+PHYSICAL_PAGE_SIZE_RATIO = int(os.getenv('PHYSICAL_PAGE_SIZE_RATIO'))
 
 class FlashTranslation:
     def __init__(self):
         self._dataCacheManage = DataCacheManage()
-        self._nandController = NandController()
+        self._nandController = NandController(self)
         self._addressTranslation = AddressTranslation()
         self._garbageCollection = GarbageCollection()
         self._garbageCollection.SetNandController(self._nandController)
@@ -18,9 +22,7 @@ class FlashTranslation:
         while True:
             page = self._dataCacheManage.GetCache()
             if not page: break 
-            physicalPageAddress, writeBytes = self._nandController.Program()
-            if (physicalPageAddress == 0):
-                print(page, physicalPageAddress)
+            physicalPageAddress, writeBytes = self._nandController.Program(PHYSICAL_PAGE_SIZE_RATIO)
             duplicateAddress = self._addressTranslation.Update(page, physicalPageAddress) 
             if duplicateAddress: self._nandController.Override(duplicateAddress)
             totalWriteBytes += writeBytes
