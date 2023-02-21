@@ -10,7 +10,9 @@ def main():
     hostInterface = HostInterface()
     for i in tqdm(range(TRACE_LENGTH)):
         request, writeBytes = hostInterface.Step()
-        #print(request.bytes, writeBytes)
+    print(hostInterface._flashTranslation._nandController._blocks)
     print(f'GC Count: {hostInterface._flashTranslation._garbageCollection._count}')
+    
+
 if __name__ == "__main__":
     main()

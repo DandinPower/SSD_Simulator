@@ -29,6 +29,7 @@ class GarbageCollection:
         totalWriteBytes = 0
         # find the highest invalid num block to gc
         blockIdx = self._nandController.GetHighestInvalidsBlockIdx()
+        blockType = self._nandController._blocks[blockIdx]._type
         reverseMap = self._addressTranslation.GetTempReverseMap()
         # get all valid page (future all valid lba) in blockIdx
         pages = self._nandController._blocks[blockIdx]._pages
@@ -40,11 +41,9 @@ class GarbageCollection:
                 logicalPages.append(logicalPage)
         for page in logicalPages:
             programCount = len(page)
-            physicalPageAddress, writeBytes = self._nandController.Program(programCount)
+            physicalPageAddress, writeBytes = self._nandController.Program(programCount, blockType)
             # update lba map inside page
             duplicate = self._addressTranslation.Update(page, physicalPageAddress)
             totalWriteBytes += writeBytes
-        self._nandController.RemoveFromFreeBlockIfAlreadyFree(blockIdx)
-        self._nandController.AddFreeBlock(blockIdx)
         self._nandController.EraseBlock(blockIdx)
         return totalWriteBytes
