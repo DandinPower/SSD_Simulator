@@ -6,9 +6,11 @@ class AddressTranslation:
         
     def Update(self, page, physicalPageAddress):
         duplicateAddress = []
-        for lba in page:
+        for i in range(len(page)):
+            lba = page[i]
             original = self._lb2pp.Update(lba, physicalPageAddress)
-            if original != None: duplicateAddress.append(original)
+            if original != None: 
+                duplicateAddress.append(original)
         return duplicateAddress
     
     def GetTempReverseMap(self):

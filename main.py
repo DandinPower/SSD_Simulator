@@ -12,9 +12,10 @@ def main():
     history = WAFHistory()
     for i in tqdm(range(TRACE_LENGTH)):
         request, writeBytes = hostInterface.Step()
+        #print(hostInterface._flashTranslation._nandController._blocks)
+        #print(hostInterface._flashTranslation._addressTranslation._lb2pp._map)
+        #print(hostInterface._flashTranslation._addressTranslation._lb2pp._inverseMap)
         history.AddHistory(i, writeBytes / request.bytes)
-    print(hostInterface._flashTranslation._nandController._blocks)
-    print(f'GC Count: {hostInterface._flashTranslation._garbageCollection._count}')
     history.ShowHistory('test.png')
     
 

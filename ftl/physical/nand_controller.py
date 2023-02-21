@@ -105,8 +105,10 @@ class NandController:
         self._currentHotBlockIndex = None 
         self._currentColdBlockIndex = None 
         self.InitializeBlocks()
-    
+        
     def EraseBlock(self, blockIdx):
+        # 要把所有只到block裡page的map刪掉
+        
         # RemoveFromFreeBlockIfAlreadyFree
         if not self._blocks[blockIdx].IsFull():
             self._freeBlockIndexes.remove(blockIdx)

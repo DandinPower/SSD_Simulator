@@ -1,4 +1,5 @@
 from ..physical.nand_controller import PageStatus
+import copy
 from dotenv import load_dotenv
 import os
 load_dotenv()
@@ -30,19 +31,16 @@ class GarbageCollection:
         # find the highest invalid num block to gc
         blockIdx = self._nandController.GetHighestInvalidsBlockIdx()
         blockType = self._nandController._blocks[blockIdx]._type
-        reverseMap = self._addressTranslation.GetTempReverseMap()
-        # get all valid page (future all valid lba) in blockIdx
+        reverseMap = self._addressTranslation._lb2pp._inverseMap
         pages = self._nandController._blocks[blockIdx]._pages
         logicalPages = []
         for page in pages: 
             if page._status == PageStatus.VALID:
-                logicalPage = reverseMap[page._pageAddress]
-                # program all page in to nandcontroller
+                logicalPage = sorted(copy.deepcopy(reverseMap[page._pageAddress]))
                 logicalPages.append(logicalPage)
         for page in logicalPages:
             programCount = len(page)
             physicalPageAddress, writeBytes = self._nandController.Program(programCount, blockType)
-            # update lba map inside page
             duplicate = self._addressTranslation.Update(page, physicalPageAddress)
             totalWriteBytes += writeBytes
         self._nandController.EraseBlock(blockIdx)
