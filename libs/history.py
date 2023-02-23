@@ -9,36 +9,27 @@ WAF_AVERAGE_PERIOD = int(os.getenv('WAF_AVERAGE_PERIOD'))
 class WAFHistory:
     def __init__(self):
         self.episodes = []
-        self.wafs = []
+        self.writeBytes = []
+        self.actualWriteBytes = []
 
-    def AddHistory(self, episode, waf):
+    def AddHistory(self, episode, writeByte, actualWriteByte):
         self.episodes.append(episode)
-        self.wafs.append(waf)
+        self.writeBytes.append(writeByte)
+        self.actualWriteBytes.append(actualWriteByte)
 
     @staticmethod
-    def _moving_average(x, periods=WAF_AVERAGE_PERIOD):
-        if len(x) < periods:
-            return x
-        cumsum = np.cumsum(np.insert(x, 0, 0)) 
-        res = (cumsum[periods:] - cumsum[:-periods]) / periods
-        return np.hstack([x[:periods-1], res])
+    def _moving_average(x_1, x_2, periods=WAF_AVERAGE_PERIOD):
+        if len(x_1) < periods:
+            return np.nan
+        x = np.sum(x_2[-periods:]) / np.sum(x_1[-periods:])
+        return x
 
     def ShowHistory(self, path):
-        fig = plt.figure(1, figsize=(15, 7))
-        plt.clf()
-        ax1 = fig.add_subplot(111)
-        lines = []
-        fig = plt.figure(1, figsize=(15, 7))
-        plt.clf()
-        ax1 = fig.add_subplot(111)
-        #ax1.set_ylim(0, 10)
-        ax1.plot(self.wafs, color="C2", alpha=0.2)
-        plt.title('Simulate')
-        ax1.set_xlabel('Episode')
-        ax1.set_ylabel('WAFS')
-        mean_waf = self._moving_average(self.wafs)
-        lines.append(ax1.plot(mean_waf, label="WAFS", color="C2")[0])    
-        labs = [l.get_label() for l in lines]
-        ax1.legend(lines, labs, loc=3)
+        ma_periods = WAF_AVERAGE_PERIOD
+        ma = [self._moving_average(self.writeBytes, self.actualWriteBytes, periods=ma_periods) for self.writeBytes, self.actualWriteBytes in zip(np.array_split(self.writeBytes, len(self.writeBytes) / ma_periods), np.array_split(self.actualWriteBytes, len(self.actualWriteBytes) / ma_periods))]
+        plt.title(f'Simulate Period: {ma_periods}')
+        plt.plot(np.repeat(ma, ma_periods), label='WAF')
+        plt.legend()
         plt.savefig(path)
         plt.clf()
+

@@ -12,12 +12,8 @@ def main():
     history = WAFHistory()
     for i in tqdm(range(TRACE_LENGTH)):
         request, writeBytes = hostInterface.Step()
-        #print(hostInterface._flashTranslation._nandController._blocks)
-        #print(hostInterface._flashTranslation._addressTranslation._lb2pp._map)
-        #print(hostInterface._flashTranslation._addressTranslation._lb2pp._inverseMap)
-        history.AddHistory(i, writeBytes / request.bytes)
+        history.AddHistory(i, request.bytes, writeBytes)
     history.ShowHistory('test.png')
     
-
 if __name__ == "__main__":
     main()

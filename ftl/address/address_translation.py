@@ -6,8 +6,7 @@ class AddressTranslation:
         
     def Update(self, page, physicalPageAddress):
         duplicateAddress = []
-        for i in range(len(page)):
-            lba = page[i]
+        for lba in page:
             original = self._lb2pp.Update(lba, physicalPageAddress)
             if original != None: 
                 duplicateAddress.append(original)

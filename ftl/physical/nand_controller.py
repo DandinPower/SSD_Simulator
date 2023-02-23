@@ -106,9 +106,24 @@ class NandController:
         self._currentColdBlockIndex = None 
         self.InitializeBlocks()
         
+    # count 為寫入SSD的page數量, type為寫入的Block種類 (需使用BlockType Enum)
+    def Program(self, count, type):
+        programBlockIndex = self.GetFreeBlock(type)
+        physicalPageAddress = self._blocks[programBlockIndex].Program(count, type)
+        if self._blocks[programBlockIndex].IsFull():
+            self._freeBlockIndexes.remove(programBlockIndex)
+            self.ClearFreeBlockIndex(type)
+        if len(self._freeBlockIndexes) == 0:
+            raise IndexError('no free block')
+        return physicalPageAddress, PHYSICAL_PAGE_SIZE_RATIO * LBA_BYTES
+
+    def Override(self, duplicateAddress):
+        for address in duplicateAddress:
+            blockIdx = address // PHYSICAL_PAGE_NUM_IN_BLOCK
+            pageIdx = address % PHYSICAL_PAGE_NUM_IN_BLOCK
+            self._blocks[blockIdx][pageIdx].Override()
+
     def EraseBlock(self, blockIdx):
-        # 要把所有只到block裡page的map刪掉
-        
         # RemoveFromFreeBlockIfAlreadyFree
         if not self._blocks[blockIdx].IsFull():
             self._freeBlockIndexes.remove(blockIdx)
@@ -156,26 +171,9 @@ class NandController:
         else:
             raise TypeError('unknown block type')
 
-    # count 為寫入SSD的page數量, type為寫入的Block種類 (需使用BlockType Enum)
-    def Program(self, count, type):
-        programBlockIndex = self.GetFreeBlock(type)
-        physicalPageAddress = self._blocks[programBlockIndex].Program(count, type)
-        if self._blocks[programBlockIndex].IsFull():
-            self._freeBlockIndexes.remove(programBlockIndex)
-            self.ClearFreeBlockIndex(type)
-        if len(self._freeBlockIndexes) == 0:
-            raise IndexError('no free block')
-        return physicalPageAddress, PHYSICAL_PAGE_SIZE_RATIO * LBA_BYTES
-
     def GetHighestInvalidsBlockIdx(self):
         tempBlocks = sorted(self._blocks, reverse= True)
         return tempBlocks[0]._blockIdx
 
     def GetFreeSpaceRatio(self):
         return len(self._freeBlockIndexes) / PHYSICAL_BLOCK_NUM
-    
-    def Override(self, duplicateAddress):
-        for address in duplicateAddress:
-            blockIdx = address // PHYSICAL_PAGE_NUM_IN_BLOCK
-            pageIdx = address % PHYSICAL_PAGE_NUM_IN_BLOCK
-            self._blocks[blockIdx][pageIdx].Override()

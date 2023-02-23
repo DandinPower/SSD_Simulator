@@ -18,8 +18,8 @@ class FlashTranslation:
         self._garbageCollection.SetAddressTranslation(self._addressTranslation)
     
     def GetBlockType(self):
-        #return random.choice([BlockType.HOT, BlockType.COLD])
-        return BlockType.HOT
+        return random.choice([BlockType.HOT, BlockType.COLD])
+    
     # return actual write bytes
     def Write(self, request):
         #print(request)
@@ -31,7 +31,11 @@ class FlashTranslation:
             if not page: break 
             physicalPageAddress, writeBytes = self._nandController.Program(PHYSICAL_PAGE_SIZE_RATIO, self.GetBlockType())
             duplicateAddress = self._addressTranslation.Update(page, physicalPageAddress) 
-            if duplicateAddress: self._nandController.Override(duplicateAddress)
+            if duplicateAddress: 
+                try:
+                    self._nandController.Override(duplicateAddress)
+                except Exception as e:
+                    print(e)
             totalWriteBytes += writeBytes
         writeBytes = self._garbageCollection.AutoCheck(self._nandController.GetFreeSpaceRatio())
         totalWriteBytes += writeBytes
